@@ -13,11 +13,10 @@ class ComplimentsGetter:
 	async def _construct(self):
 		self.session = ClientSession()
 
-	async def get(self):
-		async with self.session.get('https://complimentr.com/api') as resp:
-			if resp.status == 200:
-				data = await resp.json()
-		text = self.translator.translate(data['compliment'], dest='ru')
+	async def get(self) -> str:
+		async with self.session.get('https://8768zwfurd.execute-api.us-east-1.amazonaws.com/v1/compliments') as resp:
+			data = (await resp.read()).decode()
+		text = self.translator.translate(data[1:-1], dest='ru')
 		return text.text
 
 	def __del__(self):

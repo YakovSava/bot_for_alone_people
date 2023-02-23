@@ -17,7 +17,8 @@ class Database:
 		await self.cursor.execute('''CREATE TABLE if not exists Users (
 	name TEXT,
 	id BIGINT,
-	compliments_in_day INT
+	compliments_in_day INT,
+	await INT
 )''')
 		await self.connection.commit()
 
@@ -34,7 +35,7 @@ class Database:
 		await self.connection.commit()
 
 	async def reg(self, data:dict={'id': 666, 'name': 'NameExample', 'cid': 5}) -> None:
-		await self.cursor.execute('INSERT INTO Users VALUES (?,?,?)', (data['name'], data['id'], data['cid']))
+		await self.cursor.execute('INSERT INTO Users VALUES (?,?,?,?)', (data['name'], data['id'], data['cid'], 0))
 		await self.connection.commit()
 
 	async def xget_all(self) -> tuple:
@@ -45,6 +46,13 @@ class Database:
 		await self.cursor.execute('SELECT * FROM Users')
 		for record in (await self.cursor.fetchall()):
 			yield record
+
+	async def set_cd(self, num:int=0, edited_id:int=0) -> None:
+		await self.cursor.execute(f'UPDATE Users SET await = {num} WHERE id = {edited_id}')
+		await self.connection.commit()
+
+	async def exists(self, exists_id:int=0) -> bool:
+		return (await self.get(exists_id)) is None
 
 	async def __aenter__(self, *args, **kwargs) -> AsyncContextManager: return self
 	async def __aexit__(self) -> None: await self.connection.commit()
