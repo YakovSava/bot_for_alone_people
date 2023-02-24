@@ -108,8 +108,13 @@ async def reg_cid_step(message:Message, state:FSMContext):
 
 @dp.message_handler(commands=['cid'])
 async def edit_cid_handler(message:Message):
-	await EditState.cid.set()
-	await message.answer('Вводи число снова, солнышко)')
+	if (await database.exists(message.from_id)):
+		await EditState.cid.set()
+		await message.answer('Вводи число снова, солнышко)')
+	else:
+		keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+		keyboard.add('/reg')
+		await message.anwer('Ты не можешь поменять количество комплиментов в день, пока не зарегестрируешься. Зарегестрируйся пожалуйста, солнышко', reply_markup=keyboard)
 
 @dp.message_handler(state=EditState.cid)
 async def edit_cid_step2_handler(message:Message, state:FSMContext):
@@ -133,8 +138,13 @@ async def edit_cid_step2_handler(message:Message, state:FSMContext):
 
 @dp.message_handler(commands=['name'])
 async def edit_name_handler(message:Message):
-	await EditState.name.set()
-	await message.answer('Вводи новое имя, прелесть')
+	if (await database.exists(message.from_id)):
+		await EditState.name.set()
+		await message.answer('Вводи новое имя, прелесть')
+	else:
+		keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+		keyboard.add('/reg')
+		await message.anwer('Ты не можешь менять имя пока не зарегестрирован, солнышко', reply_markup=keyboard)
 
 @dp.message_handler(state=EditState.name)
 async def edit_name_step2_handler(message:Message, state:FSMContext):
@@ -149,9 +159,14 @@ async def edit_name_step2_handler(message:Message, state:FSMContext):
 
 @dp.message_handler(commands=['compliment', 'comp'])
 async def compliments_handler(message:Message):
-	keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-	keyboard.add('/menu')
-	await message.answer(await compget.get(), reply_markup=keyboard)
+	if (await database.exists(message.from_id)):
+		keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+		keyboard.add('/menu')
+		await message.answer(await compget.get(), reply_markup=keyboard)
+	else:
+		keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+		keyboard.add('/reg')
+		await message.anwer('Солнце, я не знаю за что выдавать тебе комплименты. Давай вот зарегестрируйся, а потом можешь просить комлпименты, сколько хочешь :3', reply_markup=keyboard)
 
 @dp.message_handler(commands=['dev'])
 async def print_dev_handler(message:Message):
@@ -159,8 +174,15 @@ async def print_dev_handler(message:Message):
 	keyboard.add('/menu')
 	await message.answer('Бот написан разработчиком https://t.me/dc11gh58', reply_markup=keyboard)
 
-# @dp.message_handler(commands=['donate'])
-# async def 
+@dp.message_handler(commands=['donate'])
+async def donate_handler(message:Message):
+	if (await database.exists(message.from_id)):
+		await message.answer('Это донат. Он не обязателен, бот работает абсолютно бесплатно и не требует каких-нибудь подписок и т.п.\n\
+Но к сожаленнию сервера что-то, но стоят, потому тут есть эта кнопочка и ниже варианты как можно задонатить')
+	else:
+		keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+		keyboard.add('/reg')
+		await message.anwer('Солнышко, я понимаю что ты хочешь помочь нам, но героев надо знать в лицо. Зарегестрируйся пожалуйста', reply_markup=keyboard)
 
 async def polling():
 	executor.start_polling(dp, skip_updates=True, loop=main_loop)
