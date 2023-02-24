@@ -1,8 +1,10 @@
 import asyncio
 
+from sys import platform
+from multiprocessing import Process
 from pyqiwip2p import AioQiwiP2P
 from aiogram import Bot, Dispatcher, executor
-from aiogram.typing import Message, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, \
+from aiogram.types import Message, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, \
 	CallbackQuery
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -13,7 +15,10 @@ from plugins.states import RegistrationState, EditState, PaymentState
 from plugins.storage import Storage
 from config import token, qiwi_token
 
-main_loop = asyncio.get_event_loop()
+if platform is ['win32', 'cygwin', 'msys']: asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+main_loop = asyncio.new_event_loop()
+asyncio.set_event_loop(main_loop)
 
 bot = Bot(token)
 dp = Dispatcher(bot, storage=MemoryStorage())
@@ -183,7 +188,7 @@ async def donate_handler(message:Message):
 	if (await database.exists(message.from_id)):
 		keyboard.add('/qiwi')
 		await message.answer('Это донат. Он не обязателен, бот работает абсолютно бесплатно и не требует каких-нибудь подписок и т.п.\n\
-Но к сожаленнию сервера что-то, но стоят, потому тут есть эта кнопочка и ниже варианты как можно задонатить')
+Но к сожаленнию сервера что-то, но стоят, потому тут есть эта кнопочка и ниже варианты как можно задонатить', reply_markup=keyboard)
 	else:
 		keyboard.add('/reg')
 		await message.anwer('Солнышко, я понимаю что ты хочешь помочь нам, но героев надо знать в лицо. Зарегестрируйся пожалуйста', reply_markup=keyboard)
@@ -199,11 +204,12 @@ async def qiwi_handler(message:Message):
 		await message.anwer('Солнышко, я понимаю что ты хочешь помочь нам, но героев надо знать в лицо. Зарегестрируйся пожалуйста', reply_markup=keyboard)
 
 @dp.message_handler(state=PaymentState.qiwi)
-async def qiwi_pay_handler(message:Message):
+async def qiwi_pay_handler(message:Message, state:FSMContext):
 	if message.text.isdigit():
 		amount = int(message.text)
 	else:
 		amount = 50
+	await state.finish()
 	price = await qiwi.bill(amount=amount)
 	back = ReplyKeyboardMarkup(resize_keyboard=True)
 	back.add('/menu')
@@ -222,13 +228,10 @@ async def check_pay(call:CallbackQuery):
 	else:
 		await call.answer(text='Ещё не оплачено!', show_alert=True)
 
-async def polling():
-	executor.start_polling(dp, skip_updates=True, loop=main_loop)
+def polling():
+	executor.start_polling(dp, skip_updates=True, loop=asyncio.get_event_loop())
 
 if __name__ == '__main__':
-	main_loop.run_until_complete(
-		asyncio.wait(
-			main_loop.create_task(dispatcher.checker()),
-			main_loop.create_task(polling())
-		)
-	)
+	p = Process(target=polling)
+	p.start()
+	main_loop.run_until_complete(dispatcher.checker())

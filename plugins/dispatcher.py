@@ -20,7 +20,7 @@ class Dispatcher:
 
 	async def checker(self):
 		while True:
-			send_compliment = [rec['id'] for rec in self.database if (time() - rec['await'] < (24*60*60) / rec['compliments_in_day'])]
+			send_compliment = [rec['id'] async for rec in self._db.get_all() if (time() - rec['await'] < (24*60*60) / rec['compliments_in_day'])]
 			await asyncio.gather(*[
 				self._bot.send_message(
 					chat_id=id_,

@@ -13,7 +13,7 @@ class Database:
 	async def _setter(self):
 		self.connection = await aiosqlite.connect(join('data', 'data.db'), check_same_thread=False)
 		self.connection.row_factory = aiosqlite.Row
-		self.cursor = self.connection.cursor()
+		self.cursor = await self.connection.cursor()
 		await self.cursor.execute('''CREATE TABLE if not exists Users (
 	name TEXT,
 	id BIGINT,
@@ -56,7 +56,7 @@ class Database:
 		await self.connection.commit()
 
 	async def exists(self, exists_id:int=0) -> bool:
-		return (await self.get(exists_id)) is None
+		return (await self.get(exists_id)) is not None
 
 	async def __aenter__(self, *args, **kwargs) -> AsyncContextManager: return self
 	async def __aexit__(self) -> None: await self.connection.commit()
