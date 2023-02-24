@@ -34,6 +34,10 @@ class Database:
 		await self.cursor.execute(f'UPDATE Users SET compliments_in_day = {cid} WHERE id = {edit_id}')
 		await self.connection.commit()
 
+	async def edit_name(self, edit_id:int=None, new_name:str=None) -> None:
+		await self.cursor.execute(f'UPDATE Users SET name = {new_name} WHERE id = {edit_id}')
+		await self.connection.commit()
+
 	async def reg(self, data:dict={'id': 666, 'name': 'NameExample', 'cid': 5}) -> None:
 		await self.cursor.execute('INSERT INTO Users VALUES (?,?,?,?)', (data['name'], data['id'], data['cid'], 0))
 		await self.connection.commit()
