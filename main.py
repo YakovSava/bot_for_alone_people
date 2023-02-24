@@ -1,15 +1,17 @@
 import asyncio
 
+from pyqiwip2p import AioQiwiP2P
 from aiogram import Bot, Dispatcher, executor
-from aiogram.typing import Message, ReplyKeyboardMarkup
+from aiogram.typing import Message, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, \
+	CallbackQuery
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from config import token
 from plugins.database import Database
 from plugins.dispatcher import Dispatcher as dis
 from plugins.compliments import ComplimentsGetter
 from plugins.states import RegistrationState, EditState, PaymentState
 from plugins.storage import Storage
+from config import token, qiwi_token
 
 main_loop = asyncio.get_event_loop()
 
@@ -24,6 +26,7 @@ dispatcher = dis(
 	bot=bot
 )
 storage = Storage()
+qiwi = AioQiwiP2P(qiwi_token)
 
 @dp.message_handler(commands=['start'])
 async def start_handler(message:Message):
@@ -176,13 +179,48 @@ async def print_dev_handler(message:Message):
 
 @dp.message_handler(commands=['donate'])
 async def donate_handler(message:Message):
+	keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 	if (await database.exists(message.from_id)):
+		keyboard.add('/qiwi')
 		await message.answer('Это донат. Он не обязателен, бот работает абсолютно бесплатно и не требует каких-нибудь подписок и т.п.\n\
 Но к сожаленнию сервера что-то, но стоят, потому тут есть эта кнопочка и ниже варианты как можно задонатить')
+	else:
+		keyboard.add('/reg')
+		await message.anwer('Солнышко, я понимаю что ты хочешь помочь нам, но героев надо знать в лицо. Зарегестрируйся пожалуйста', reply_markup=keyboard)
+
+@dp.message_handler(commands=['qiwi'])
+async def qiwi_handler(message:Message):
+	if (await database.exists(message.from_id)):
+		await message.answer('Напиши сколько ты хочешь задонатить!')
+		await PaymentState.qiwi.set()
 	else:
 		keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 		keyboard.add('/reg')
 		await message.anwer('Солнышко, я понимаю что ты хочешь помочь нам, но героев надо знать в лицо. Зарегестрируйся пожалуйста', reply_markup=keyboard)
+
+@dp.message_handler(state=PaymentState.qiwi)
+async def qiwi_pay_handler(message:Message):
+	if message.text.isdigit():
+		amount = int(message.text)
+	else:
+		amount = 50
+	price = await qiwi.bill(amount=amount)
+	back = ReplyKeyboardMarkup(resize_keyboard=True)
+	back.add('/menu')
+	check = InlineKeyboardMarkup()
+	check.add(InlineKeyboardButton(text='Проверка оплаты', callback_data='checker'))
+	await message.answer(f'Вот твоя индивидуальная ссылка на оплату {amount} руб.: {price.pay_url}', reply_markup=check)
+	await message.answer('Ссылка живёт 15 минут, поторопись оплатить!\n\
+после оплаты нажми на кнопку, пожалуйста...', reply_markup=back)
+	storage.set(f'{message.from_id}_checker', price.bill_id)
+
+@dp.callback_query_handler(text='checker')
+async def check_pay(call:CallbackQuery):
+	bill_price = await qiwi.bill(bill_id=storage.get(f'{call.message.from_id}_checker'))
+	if bill_price.status == 'PAID':
+		await call.message.edit_text('Вы успешно оплатили бота!')
+	else:
+		await call.answer(text='Ещё не оплачено!', show_alert=True)
 
 async def polling():
 	executor.start_polling(dp, skip_updates=True, loop=main_loop)
