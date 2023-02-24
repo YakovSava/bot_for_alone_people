@@ -19,12 +19,18 @@ class Dispatcher:
 		self._bot = bot
 
 	async def checker(self):
-		for rec in self.database:
-			self._bot.send_message(
-				chat_id=rec['id'],
-				text=(await self._cg.get())
-			)
-			await self._db.set_cd(
-				num=time(),
-				edited_id=rec['id']
-			)
+		while True:
+			send_compliment = [rec['id'] for rec in self.database if (time() - rec['await'] < (24*60*60) / rec['compliments_in_day'])]
+			await asyncio.gather(*[
+				self._bot.send_message(
+					chat_id=id_,
+					text=(await self._cg.get())
+				)
+				for id_ in send_compliment
+			])
+			for id_ in send_compliment:
+				await self._db.set_cd(
+					num=time(),
+					edited_id=id_
+				)
+			await asyncio.sleep(60*60)
